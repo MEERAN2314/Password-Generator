@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 
 # Configuration - UPDATE THIS WITH YOUR RENDER BACKEND URL
-BACKEND_URL = "http://localhost:8000"
+BACKEND_URL = "https://backend-password.vercel.app/"
 
 # Page setup
 st.set_page_config(

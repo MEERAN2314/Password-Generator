@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: advance-password-generator  # Change this to your app name
+    runtime: python
+    python:
+      version: "3.9.13"  # Optional (match your Python version)
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run app.py
+    envVars:
+      - key: STREAMLIT_SERVER_HEADLESS
+        value: "true"
+    plan: free  # Use "starter" or "standard" for paid plans

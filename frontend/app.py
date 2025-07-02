@@ -6,8 +6,8 @@ import pyperclip
 import matplotlib.pyplot as plt
 from datetime import datetime
 
-# Configuration
-BACKEND_URL = "https://password-generator-backend-lmoj.onrender.com"
+# Configuration - UPDATE THIS WITH YOUR RENDER BACKEND URL
+BACKEND_URL = "http://localhost:8000"
 
 # Page setup
 st.set_page_config(
@@ -26,11 +26,26 @@ if 'api_errors' not in st.session_state:
 
 def call_api(endpoint, payload=None):
     try:
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+        
         start_time = time.time()
+        
         if payload:
-            response = requests.post(f"{BACKEND_URL}{endpoint}", json=payload)
+            response = requests.post(
+                f"{BACKEND_URL}{endpoint}",
+                json=payload,
+                headers=headers,
+                timeout=10
+            )
         else:
-            response = requests.get(f"{BACKEND_URL}{endpoint}")
+            response = requests.get(
+                f"{BACKEND_URL}{endpoint}",
+                headers=headers,
+                timeout=10
+            )
         
         response_time = time.time() - start_time
         st.session_state.api_response_time.append(response_time)
@@ -39,7 +54,7 @@ def call_api(endpoint, payload=None):
             return response.json()
         else:
             st.session_state.api_errors += 1
-            st.error(f"API Error: {response.json().get('detail', 'Unknown error')}")
+            st.error(f"API Error {response.status_code}: {response.text}")
             return None
     except requests.exceptions.RequestException as e:
         st.session_state.api_errors += 1
@@ -81,11 +96,15 @@ def name_input_fields(prefix=""):
     return name_part1, name_part2
 
 def name_based_password_section():
-    st.subheader("Name-Based Password Options")
+    st.subheader("Name-Based Password Generator")
+    st.markdown("Create memorable passwords using city names + catchy words")
     
     col1, col2 = st.columns(2)
     with col1:
-        name_part1 = st.text_input("Primary Name (required)", key="nb_name1")
+        city_name = st.text_input("Your Name", 
+                                key="nb_city",
+                                help="Enter a city or location name")
+        
         complexity = st.select_slider(
             "Transformation Complexity",
             options=[1, 2, 3],
@@ -93,44 +112,54 @@ def name_based_password_section():
             format_func=lambda x: ["Simple", "Moderate", "Complex"][x-1],
             key="nb_complexity"
         )
+    
     with col2:
-        name_part2 = st.text_input("Secondary Name (optional)", key="nb_name2")
+        catchy_word = st.text_input("Catchy Word or City (e.g., Chicken, Blue, Chennai, Toronto)", 
+                                  key="nb_word",
+                                  help="Enter an animal, color, flower, etc.")
+        
         include_random = st.checkbox(
-            "Include Random Characters", 
+            "Add Random Characters", 
             True,
-            help="Adds random characters to increase security",
+            help="Adds numbers and special characters for security",
             key="nb_random"
         )
     
     length = st.slider("Password Length", 8, 32, 14, key="nb_length")
     
     if st.button("Generate Name-Based Password", key="nb_generate"):
-        if not name_part1:
-            st.error("Please enter at least a primary name")
+        if not city_name or not catchy_word:
+            st.error("Please enter both a city name and a catchy word")
             return
         
         payload = {
-            "name_part1": name_part1,
-            "name_part2": name_part2,
+            "name_part1": city_name,
+            "name_part2": catchy_word,
             "length": length,
             "complexity": complexity,
             "include_random": include_random
         }
         
-        with st.spinner("Creating name-based password..."):
+        with st.spinner("Creating memorable password..."):
             result = call_api("/generate/name-based", payload)
             if result:
+                st.subheader("Generated Password")
                 st.code(result["password"], language="text")
-                add_to_history(result, "Name-Based")
                 
-                st.markdown(f"**Strength:** {result['strength']['score']}/4")
-                display_strength_meter(result['strength']['score'])
-                st.markdown(f"**Estimated crack time:** {result['strength']['crack_time']}")
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.markdown("**Components:**")
+                    st.write(f"- City: {city_name}")
+                    st.write(f"- Word: {catchy_word}")
+                
+                with col2:
+                    st.markdown("**Strength Analysis**")
+                    display_strength_meter(result['strength']['score'])
+                    st.write(f"Estimated crack time: {result['strength']['crack_time']}")
                 
                 if st.button("Copy to Clipboard", key="nb_copy"):
                     pyperclip.copy(result["password"])
                     st.success("Copied to clipboard!")
-                st.write("---")
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
@@ -263,11 +292,15 @@ if page == "Password Generator":
 elif page == "Password Strength Checker":
     st.title("🔍 Password Strength Checker")
     
-    password = st.text_input("Enter a password to check its strength", type="password", key="strength_check")
+    password = st.text_input("Enter a password to check its strength", 
+                           type="password", 
+                           key="strength_check")
     
-    if password:
+    if st.button("Check Strength") and password:
         with st.spinner("Analyzing password strength..."):
+            # Make sure to use the correct endpoint
             result = call_api("/check-strength", {"password": password})
+            
             if result:
                 st.subheader("Strength Analysis")
                 
@@ -287,11 +320,15 @@ elif page == "Password Strength Checker":
                         st.info("**Suggestions:**")
                         for suggestion in result['feedback']['suggestions']:
                             st.write(f"- {suggestion}")
+    elif not password:
+        st.warning("Please enter a password first")
 
 elif page == "Password Validator":
     st.title("✅ Password Validator")
     
-    password = st.text_input("Enter a password to validate", type="password", key="validate_pass")
+    password = st.text_input("Enter a password to validate", 
+                           type="password", 
+                           key="validate_pass")
     
     st.subheader("Validation Rules")
     col1, col2 = st.columns(2)
@@ -305,7 +342,7 @@ elif page == "Password Validator":
         require_digit = st.checkbox("Require Digits", True, key="val_digit")
         require_special = st.checkbox("Require Special Characters", True, key="val_special")
     
-    if password:
+    if password and st.button("Validate Password"):
         payload = {
             "password": password,
             "rules": {
@@ -368,12 +405,6 @@ elif page == "About":
     ### Advanced Password Creator (v1.2)
     This application provides secure password generation and analysis tools with name-based options.
     
-    **New in v1.2:**
-    - Name-based password generation with customizable complexity
-    - Three levels of name transformation (Simple, Moderate, Complex)
-    - Option to combine names with random characters
-    - Enhanced security for all password types
-    
     **Features:**
     - Generate random passwords with customizable parameters
     - Create memorable passphrases
@@ -384,9 +415,8 @@ elif page == "About":
     - Performance metrics tracking
     
     **Security Notes:**
-    - Name parts are transformed and never stored
-    - All generation uses cryptographically secure methods
-    - Passwords are never logged or stored permanently
+    - All password generation happens server-side
+    - Passwords are never stored or logged
     - Uses zxcvbn for realistic strength estimation
     """)
     

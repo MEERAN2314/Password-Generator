@@ -33,46 +33,69 @@ def transform_name(name_part: str, level: int = 2) -> str:
     return transformed
 
 def generate_name_based_password(
-    name_part1: str,
-    name_part2: str = "",
+    name_part1: str,  # City name
+    name_part2: str,  # Catchy word (animal/bird/flower/etc)
     length: int = 12,
-    complexity: int = 2,
+    complexity: int = 2,  # 1=simple, 2=moderate, 3=complex
     include_random: bool = True
 ) -> str:
     """
-    Generate password primarily based on name parts
+    Generate memorable password based on city + word combinations
+    Examples:
+    Montreal + Chicken → KendrealGhicken827&
+    Toronto + Blue → GofontoFlue023*&
     """
-    # Transform name parts according to complexity level
-    part1 = transform_name(name_part1, complexity)
-    part2 = transform_name(name_part2, complexity) if name_part2 else ""
-    
-    # Combine name parts
-    if not part2:
-        base = part1
+    # Transform city name
+    if complexity >= 2:
+        # Moderate transformation: reverse first half and capitalize
+        city_part = name_part1.lower()
+        half = len(city_part) // 2
+        transformed_city = city_part[half:][::-1] + city_part[:half]
+        transformed_city = transformed_city.capitalize()
     else:
-        separators = ['', '.', '-', '_', '$', '&']
-        sep = random.choice(separators)
-        base = f"{part1}{sep}{part2}"
-    
+        # Simple transformation: just capitalize
+        transformed_city = name_part1.capitalize()
+
+    # Transform the catchy word
+    word_part = name_part2.lower()
+    if complexity >= 2:
+        # Replace vowels with similar-looking numbers/symbols
+        vowel_map = {'a': '@', 'e': '3', 'i': '1', 'o': '0', 'u': 'v'}
+        transformed_word = ''.join(vowel_map.get(c, c) for c in word_part)
+        # Capitalize random letters
+        if complexity >= 3:
+            transformed_word = ''.join(
+                c.upper() if random.random() > 0.7 else c 
+                for c in transformed_word
+            )
+    else:
+        transformed_word = word_part.capitalize()
+
+    # Combine the parts
+    password = transformed_city + transformed_word
+
     # Add random characters if requested
     if include_random:
-        random_chars = ''.join(secrets.choice(string.ascii_letters + string.digits + string.punctuation) 
-                          for _ in range(max(4, length // 3)))
-        base += random_chars
-    
-    # Shuffle and trim to length
-    password = list(base)
-    random.shuffle(password)
-    password = ''.join(password)[:length]
-    
-    # Ensure minimum complexity
-    if not any(c.isupper() for c in password):
-        password = password[:-1] + random.choice(string.ascii_uppercase)
-    if not any(c.isdigit() for c in password):
-        password = password[:-1] + random.choice(string.digits)
-    if not any(c in string.punctuation for c in password):
-        password = password[:-1] + random.choice(string.punctuation)
-    
+        # Add 2-4 random digits
+        digits = ''.join(random.choice(string.digits) for _ in range(random.randint(2,4)))
+        # Add 1-2 special characters
+        specials = ''.join(random.choice('!@#$%&*+-=_') for _ in range(random.randint(1,2)))
+        password += digits + specials
+
+    # Ensure length requirement
+    if len(password) > length:
+        password = password[:length]
+    elif len(password) < length:
+        # Add extra random characters if too short
+        extra = ''.join(random.choice(string.ascii_letters + string.digits + string.punctuation) 
+                     for _ in range(length - len(password)))
+        password += extra
+
+    # Final shuffle for security
+    password_list = list(password)
+    random.shuffle(password_list)
+    password = ''.join(password_list)
+
     return password
 
 def generate_random_password(

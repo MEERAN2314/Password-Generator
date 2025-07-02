@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
@@ -27,6 +27,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Define all models first to avoid circular references
+class ValidationRules(BaseModel):
+    min_length: Optional[int] = None
+    require_upper: Optional[bool] = None
+    require_lower: Optional[bool] = None
+    require_digit: Optional[bool] = None
+    require_special: Optional[bool] = None
+
 class PasswordRequest(BaseModel):
     length: int = 12
     include_uppercase: bool = True
@@ -49,23 +57,28 @@ class PassphraseRequest(BaseModel):
 class PinRequest(BaseModel):
     length: int = 6
 
-class ValidationRules(BaseModel):
-    min_length: Optional[int] = None
-    require_upper: Optional[bool] = None
-    require_lower: Optional[bool] = None
-    require_digit: Optional[bool] = None
-    require_special: Optional[bool] = None
-
 class NameBasedRequest(BaseModel):
     name_part1: str
     name_part2: str = ""
     length: int = 12
-    complexity: int = 2  # 1=simple, 2=moderate, 3=complex
+    complexity: int = 2
     include_random: bool = True
 
+class PasswordCheckRequest(BaseModel):
+    password: str
+
+class ValidationRequest(BaseModel):
+    password: str
+    rules: ValidationRules
+
+# Endpoints
 @app.get("/")
 def read_root():
-    return {"message": "Password Generator API - Now with name-based options"}
+    return {"message": "Password Generator API"}
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy"}
 
 @app.post("/generate/password")
 def generate_password(options: PasswordRequest):
@@ -133,16 +146,16 @@ def generate_name_based(options: NameBasedRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/check-strength")
-def check_strength(password: str):
+def check_strength(request: PasswordCheckRequest):
     try:
-        return check_password_strength(password)
+        return check_password_strength(request.password)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/validate")
-def validate_password(password: str, rules: ValidationRules):
+def validate_password(request: ValidationRequest):
     try:
-        return validate_password_rules(password, rules.dict())
+        return validate_password_rules(request.password, request.rules.dict())
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -152,7 +165,6 @@ def hash_password_endpoint(password: str, algorithm: str = "sha256"):
         return {"hash": hash_password(password, algorithm)}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-    
 
 if __name__ == "__main__":
     import uvicorn

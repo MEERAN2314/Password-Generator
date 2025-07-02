@@ -34,3 +34,6 @@ This project provides a password generation tool with a Streamlit frontend and a
 3. Navigate to the `frontend` directory and run `pip install -r requirements.txt`.
 4. Run the backend using `uvicorn main:app --reload`.
 5. Run the frontend using `streamlit run app.py`.
+
+uvicorn main:app --reload
+

@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional
 from password_utils import (
@@ -15,6 +16,15 @@ app = FastAPI(
     title="Password Generator API",
     description="A secure password generation and validation API with name-based options",
     version="1.2.0"
+)
+
+# CORS configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 class PasswordRequest(BaseModel):
@@ -142,3 +152,8 @@ def hash_password_endpoint(password: str, algorithm: str = "sha256"):
         return {"hash": hash_password(password, algorithm)}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+    
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 
 # Configuration
-BACKEND_URL = "http://localhost:8000"
+BACKEND_URL = "https://password-generator-backend-lmoj.onrender.com"
 
 # Page setup
 st.set_page_config(
